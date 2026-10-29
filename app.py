@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 
 # ============================================================
-# 1. CONFIGURACION GENERAL Y ESTILO
+# 1. CONFIGURACION GENERAL
 # ============================================================
 
 st.set_page_config(
@@ -12,6 +12,16 @@ st.set_page_config(
     page_icon="💓",
     layout="wide"
 )
+
+AZUL = "#5267F5"
+AZUL_OSCURO = "#17365D"
+TEXTO = "#334155"
+TEXTO_SECUNDARIO = "#475569"
+CUADRICULA = "#E8EDF4"
+FONDO = "#FFFFFF"
+TURQUESA = "#087F8C"
+ROJO = "#E85D5D"
+
 
 st.markdown("""
 <style>
@@ -104,73 +114,57 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 st.title("💓 Pulse EAFIT")
 st.caption("Dashboard interactivo de indicadores fisiológicos IoT")
 
 st.info(
     "Proyecto académico con datos sintéticos. "
-    "Las mediciones no permiten establecer diagnósticos médicos."
+    "Los resultados son descriptivos y no constituyen "
+    "una evaluación ni un diagnóstico médico."
 )
 
 # ============================================================
-# 2. FUNCIONES PARA GRAFICOS LEGIBLES
+# 2. FUNCIONES AUXILIARES
 # ============================================================
 
-AZUL = "#5267F5"
-AZUL_OSCURO = "#17365D"
-TEXTO = "#334155"
-TEXTO_SECUNDARIO = "#475569"
-CUADRICULA = "#E8EDF4"
-FONDO = "#FFFFFF"
-TURQUESA = "#087F8C"
-ROJO = "#E85D5D"
-
-
 def aplicar_estilo(fig, titulo=None):
-    """Aplica un estilo consistente y legible a los gráficos."""
+    """Configura colores legibles para todos los gráficos."""
 
-    configuracion = {
-        "template": "plotly_white",
-        "paper_bgcolor": FONDO,
-        "plot_bgcolor": FONDO,
-        "font": {
-            "family": "Arial, sans-serif",
-            "size": 13,
-            "color": TEXTO
-        },
-        "title": {
-            "text": titulo if titulo else fig.layout.title.text,
-            "x": 0.02,
-            "xanchor": "left",
-            "font": {
-                "size": 18,
-                "color": AZUL_OSCURO
-            }
-        },
-        "margin": {
-            "l": 45,
-            "r": 25,
-            "t": 70,
-            "b": 45
-        },
-        "legend": {
-            "font": {
-                "size": 12,
-                "color": TEXTO
-            },
-            "bgcolor": "rgba(255,255,255,0.9)"
-        },
-        "hoverlabel": {
-            "bgcolor": "#FFFFFF",
-            "font": {
-                "color": TEXTO,
-                "size": 13
-            },
-            "bordercolor": "#D7E0EC"
-        }
-    }
+    titulo_final = titulo
 
-    fig.update_layout(**configuracion)
+    if titulo_final is None:
+        titulo_final = fig.layout.title.text
+
+    fig.update_layout(
+        template="plotly_white",
+        paper_bgcolor=FONDO,
+        plot_bgcolor=FONDO,
+        font=dict(
+            family="Arial, sans-serif",
+            size=13,
+            color=TEXTO
+        ),
+        title=dict(
+            text=titulo_final,
+            x=0.02,
+            xanchor="left",
+            font=dict(
+                size=18,
+                color=AZUL_OSCURO
+            )
+        ),
+        margin=dict(l=45, r=25, t=70, b=45),
+        legend=dict(
+            font=dict(size=12, color=TEXTO),
+            bgcolor="rgba(255,255,255,0.9)"
+        ),
+        hoverlabel=dict(
+            bgcolor="#FFFFFF",
+            font=dict(color=TEXTO, size=13),
+            bordercolor="#D7E0EC"
+        )
+    )
 
     fig.update_xaxes(
         title_font=dict(size=13, color=TEXTO),
@@ -192,7 +186,7 @@ def aplicar_estilo(fig, titulo=None):
 
 
 def detectar_atipicos(datos, columna):
-    """Detecta valores atípicos mediante el rango intercuartílico."""
+    """Detecta posibles valores atípicos mediante IQR."""
 
     valores = datos[columna].dropna()
 
@@ -210,6 +204,41 @@ def detectar_atipicos(datos, columna):
         (valores < limite_inferior)
         | (valores > limite_superior)
     ]
+
+
+def resumir_rango(datos, columna, minimo, maximo):
+    """Calcula la distribución respecto a un rango de referencia."""
+
+    valores = datos[columna].dropna()
+    cantidad = len(valores)
+
+    if cantidad == 0:
+        return {
+            "total": 0,
+            "dentro": 0,
+            "debajo": 0,
+            "encima": 0,
+            "porcentaje_dentro": 0.0,
+            "porcentaje_debajo": 0.0,
+            "porcentaje_encima": 0.0
+        }
+
+    dentro = int(
+        ((valores >= minimo) & (valores <= maximo)).sum()
+    )
+
+    debajo = int((valores < minimo).sum())
+    encima = int((valores > maximo).sum())
+
+    return {
+        "total": cantidad,
+        "dentro": dentro,
+        "debajo": debajo,
+        "encima": encima,
+        "porcentaje_dentro": dentro / cantidad * 100,
+        "porcentaje_debajo": debajo / cantidad * 100,
+        "porcentaje_encima": encima / cantidad * 100
+    }
 
 
 # ============================================================
@@ -270,7 +299,7 @@ def cargar_datos():
     df["fecha"] = df["timestamp"].dt.date
     df["hora"] = df["timestamp"].dt.hour
 
-    dias_espanol = {
+    traduccion_dias = {
         "Monday": "Lunes",
         "Tuesday": "Martes",
         "Wednesday": "Miércoles",
@@ -281,7 +310,7 @@ def cargar_datos():
     }
 
     df["dia_semana"] = (
-        df["timestamp"].dt.day_name().map(dias_espanol)
+        df["timestamp"].dt.day_name().map(traduccion_dias)
     )
 
     return df
@@ -292,9 +321,9 @@ try:
 
 except FileNotFoundError:
     st.error(
-        "No se encontró el CSV. Verifica que "
-        "proyecto_integrador_eafit_max30102.csv esté "
-        "en la raíz del repositorio."
+        "No se encontró el archivo "
+        "proyecto_integrador_eafit_max30102.csv. "
+        "Verifica que esté en la raíz del repositorio."
     )
     st.stop()
 
@@ -302,9 +331,11 @@ except Exception as error:
     st.error(f"Error al cargar los datos: {error}")
     st.stop()
 
+
 if df.empty:
     st.error("No hay registros con fechas válidas.")
     st.stop()
+
 
 # ============================================================
 # 4. FILTROS
@@ -337,6 +368,7 @@ estado = st.sidebar.selectbox(
     ["Todos", "valid", "invalid"]
 )
 
+
 # ============================================================
 # 5. APLICAR FILTROS
 # ============================================================
@@ -366,9 +398,11 @@ if estado != "Todos":
 
 if filtrado.empty:
     st.warning(
-        "No hay mediciones con los filtros seleccionados."
+        "No hay mediciones con los filtros seleccionados. "
+        "Prueba con otro rango o estudiante."
     )
     st.stop()
+
 
 validas = filtrado[
     filtrado["measurement_status"] == "valid"
@@ -388,8 +422,9 @@ porcentaje_invalidas = (
 bpm_promedio = validas["heart_rate_bpm"].mean()
 spo2_promedio = validas["spo2_percent"].mean()
 
+
 # ============================================================
-# 6. INDICADORES
+# 6. INDICADORES GENERALES
 # ============================================================
 
 st.subheader("📊 Indicadores generales")
@@ -397,28 +432,193 @@ st.subheader("📊 Indicadores generales")
 c1, c2, c3, c4, c5 = st.columns(5)
 
 c1.metric("Mediciones", f"{total:,}")
+
 c2.metric(
     "Estudiantes",
     f"{filtrado['student_id'].nunique():,}"
 )
+
 c3.metric(
     "BPM promedio",
     f"{bpm_promedio:.2f}"
     if pd.notna(bpm_promedio) else "—"
 )
+
 c4.metric(
     "SpO₂ promedio",
     f"{spo2_promedio:.2f}%"
     if pd.notna(spo2_promedio) else "—"
 )
-c5.metric("Inválidas", f"{porcentaje_invalidas:.2f}%")
+
+c5.metric(
+    "Inválidas",
+    f"{porcentaje_invalidas:.2f}%"
+)
+
+
+# ============================================================
+# 7. RESUMEN FACIL DE ENTENDER
+# ============================================================
 
 st.divider()
 
+st.header("📋 ¿Qué significan los resultados?")
+
+st.write(
+    "Este resumen explica cuántas mediciones válidas están "
+    "dentro o fuera de unos rangos de referencia orientativos."
+)
+
+st.caption(
+    "Los porcentajes corresponden a mediciones, no a personas. "
+    "Una persona puede tener varias mediciones."
+)
+
+# Referencias orientativas.
+# El rango 60–100 BPM corresponde a adultos en reposo.
+BPM_MIN = 60
+BPM_MAX = 100
+
+# Referencia habitual de SpO2 a nivel del mar.
+SPO2_MIN = 95
+SPO2_MAX = 100
+
+resumen_bpm = resumir_rango(
+    validas,
+    "heart_rate_bpm",
+    BPM_MIN,
+    BPM_MAX
+)
+
+resumen_spo2 = resumir_rango(
+    validas,
+    "spo2_percent",
+    SPO2_MIN,
+    SPO2_MAX
+)
+
+col_bpm, col_spo2 = st.columns(2)
+
+with col_bpm:
+    st.markdown("### ❤️ Frecuencia cardíaca")
+
+    if resumen_bpm["total"] > 0:
+        st.metric(
+            "Mediciones dentro del rango",
+            f'{resumen_bpm["porcentaje_dentro"]:.1f}%'
+        )
+
+        st.write(
+            f'{resumen_bpm["dentro"]:,} de '
+            f'{resumen_bpm["total"]:,} mediciones válidas '
+            f'están entre {BPM_MIN} y {BPM_MAX} BPM.'
+        )
+
+        st.write(
+            f'Por debajo del rango: '
+            f'**{resumen_bpm["porcentaje_debajo"]:.1f}%**.'
+        )
+
+        st.write(
+            f'Por encima del rango: '
+            f'**{resumen_bpm["porcentaje_encima"]:.1f}%**.'
+        )
+
+        st.caption(
+            "Referencia orientativa para adultos en reposo. "
+            "Si las mediciones se realizaron durante actividad "
+            "física, esta comparación puede no ser adecuada."
+        )
+    else:
+        st.info("No hay mediciones válidas de BPM disponibles.")
+
+with col_spo2:
+    st.markdown("### 🫁 Saturación de oxígeno (SpO₂)")
+
+    if resumen_spo2["total"] > 0:
+        st.metric(
+            "Mediciones dentro del rango",
+            f'{resumen_spo2["porcentaje_dentro"]:.1f}%'
+        )
+
+        st.write(
+            f'{resumen_spo2["dentro"]:,} de '
+            f'{resumen_spo2["total"]:,} mediciones válidas '
+            f'están entre {SPO2_MIN}% y {SPO2_MAX}%.'
+        )
+
+        st.write(
+            f'Por debajo del rango: '
+            f'**{resumen_spo2["porcentaje_debajo"]:.1f}%**.'
+        )
+
+        st.write(
+            f'Por encima del rango: '
+            f'**{resumen_spo2["porcentaje_encima"]:.1f}%**.'
+        )
+
+        st.caption(
+            "Referencia orientativa habitual para adultos a nivel "
+            "del mar. La altitud, el dispositivo y las condiciones "
+            "de medición pueden influir en la lectura."
+        )
+    else:
+        st.info("No hay mediciones válidas de SpO₂ disponibles.")
+
+
+st.markdown("### 📊 Distribución resumida")
+
+filas_resumen = []
+
+for nombre, resumen in [
+    ("Frecuencia cardíaca (BPM)", resumen_bpm),
+    ("Saturación de oxígeno (SpO₂)", resumen_spo2)
+]:
+    if resumen["total"] == 0:
+        filas_resumen.append({
+            "Indicador": nombre,
+            "Dentro del rango": "Sin datos",
+            "Por debajo": "Sin datos",
+            "Por encima": "Sin datos",
+            "Mediciones válidas": 0
+        })
+    else:
+        filas_resumen.append({
+            "Indicador": nombre,
+            "Dentro del rango":
+                f'{resumen["porcentaje_dentro"]:.1f}% '
+                f'({resumen["dentro"]})',
+            "Por debajo":
+                f'{resumen["porcentaje_debajo"]:.1f}% '
+                f'({resumen["debajo"]})',
+            "Por encima":
+                f'{resumen["porcentaje_encima"]:.1f}% '
+                f'({resumen["encima"]})',
+            "Mediciones válidas": resumen["total"]
+        })
+
+tabla_resumen = pd.DataFrame(filas_resumen)
+
+st.dataframe(
+    tabla_resumen,
+    use_container_width=True,
+    hide_index=True
+)
+
+st.warning(
+    "Importante: estar dentro de un rango de referencia no "
+    "demuestra que una persona esté sana, y estar fuera de él "
+    "no significa automáticamente que tenga una enfermedad. "
+    "Este proyecto utiliza datos sintéticos y no permite "
+    "establecer conclusiones clínicas sobre estudiantes de EAFIT."
+)
+
+
 # ============================================================
-# 7. MEDICIONES POR FECHA
+# 8. MEDICIONES POR FECHA
 # ============================================================
 
+st.divider()
 st.subheader("📅 Actividad del tótem")
 
 mediciones_fecha = (
@@ -446,10 +646,12 @@ fig_fecha.update_traces(
 )
 
 fig_fecha = aplicar_estilo(fig_fecha)
+
 st.plotly_chart(fig_fecha, use_container_width=True)
 
+
 # ============================================================
-# 8. DISTRIBUCION DE BPM Y SPO2
+# 9. DISTRIBUCION DE BPM Y SPO2
 # ============================================================
 
 col1, col2 = st.columns(2)
@@ -457,7 +659,9 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("❤️ Distribución de BPM")
 
-    bpm_data = validas.dropna(subset=["heart_rate_bpm"])
+    bpm_data = validas.dropna(
+        subset=["heart_rate_bpm"]
+    )
 
     if not bpm_data.empty:
         fig_bpm = px.histogram(
@@ -478,14 +682,21 @@ with col1:
         )
 
         fig_bpm = aplicar_estilo(fig_bpm)
-        st.plotly_chart(fig_bpm, use_container_width=True)
+
+        st.plotly_chart(
+            fig_bpm,
+            use_container_width=True
+        )
     else:
         st.info("No hay datos válidos de BPM.")
+
 
 with col2:
     st.subheader("🫁 Distribución de SpO₂")
 
-    spo2_data = validas.dropna(subset=["spo2_percent"])
+    spo2_data = validas.dropna(
+        subset=["spo2_percent"]
+    )
 
     if not spo2_data.empty:
         fig_spo2 = px.histogram(
@@ -506,12 +717,17 @@ with col2:
         )
 
         fig_spo2 = aplicar_estilo(fig_spo2)
-        st.plotly_chart(fig_spo2, use_container_width=True)
+
+        st.plotly_chart(
+            fig_spo2,
+            use_container_width=True
+        )
     else:
         st.info("No hay datos válidos de SpO₂.")
 
+
 # ============================================================
-# 9. USO POR HORA
+# 10. USO POR HORA
 # ============================================================
 
 st.subheader("🕒 Horarios de utilización")
@@ -542,10 +758,12 @@ fig_hora.update_xaxes(
 )
 
 fig_hora = aplicar_estilo(fig_hora)
+
 st.plotly_chart(fig_hora, use_container_width=True)
 
+
 # ============================================================
-# 10. ESTADO DE LAS MEDICIONES
+# 11. ESTADO DE LAS MEDICIONES
 # ============================================================
 
 st.subheader("🛡️ Estado de las mediciones")
@@ -557,11 +775,6 @@ conteo_estado = (
     .reset_index(name="cantidad")
 )
 
-colores_estado = {
-    "valid": AZUL,
-    "invalid": ROJO
-}
-
 fig_estado = px.pie(
     conteo_estado,
     names="estado",
@@ -569,7 +782,10 @@ fig_estado = px.pie(
     hole=0.48,
     title="Proporción de mediciones por estado",
     color="estado",
-    color_discrete_map=colores_estado
+    color_discrete_map={
+        "valid": AZUL,
+        "invalid": ROJO
+    }
 )
 
 fig_estado = aplicar_estilo(fig_estado)
@@ -593,10 +809,14 @@ fig_estado.update_traces(
     )
 )
 
-st.plotly_chart(fig_estado, use_container_width=True)
+st.plotly_chart(
+    fig_estado,
+    use_container_width=True
+)
+
 
 # ============================================================
-# 11. USO POR DIA DE LA SEMANA
+# 12. USO POR DIA DE LA SEMANA
 # ============================================================
 
 st.subheader("📆 Uso por día de la semana")
@@ -632,10 +852,12 @@ fig_dia.update_traces(
 )
 
 fig_dia = aplicar_estilo(fig_dia)
+
 st.plotly_chart(fig_dia, use_container_width=True)
 
+
 # ============================================================
-# 12. SEGUIMIENTO INDIVIDUAL
+# 13. SEGUIMIENTO INDIVIDUAL
 # ============================================================
 
 st.divider()
@@ -649,7 +871,10 @@ if estudiante == "Todos":
     )
 else:
     estudiante_individual = estudiante
-    st.write(f"Estudiante seleccionado: {estudiante}")
+
+    st.write(
+        f"Estudiante seleccionado: {estudiante}"
+    )
 
 historial = df[
     (df["student_id"] == estudiante_individual)
@@ -675,9 +900,20 @@ if not historial.empty:
 
     h1, h2, h3 = st.columns(3)
 
-    h1.metric("Mediciones válidas", len(historial))
-    h2.metric("Primera medición", primera.strftime("%d/%m/%Y"))
-    h3.metric("Última medición", ultima.strftime("%d/%m/%Y"))
+    h1.metric(
+        "Mediciones válidas",
+        len(historial)
+    )
+
+    h2.metric(
+        "Primera medición",
+        primera.strftime("%d/%m/%Y")
+    )
+
+    h3.metric(
+        "Última medición",
+        ultima.strftime("%d/%m/%Y")
+    )
 
     fig_individual = px.line(
         historial,
@@ -698,6 +934,7 @@ if not historial.empty:
     )
 
     fig_individual = aplicar_estilo(fig_individual)
+
     st.plotly_chart(
         fig_individual,
         use_container_width=True
@@ -729,22 +966,23 @@ if not historial.empty:
         fig_individual_spo2,
         use_container_width=True
     )
+
 else:
     st.info(
         "No hay mediciones válidas para este estudiante "
         "en el período seleccionado."
     )
 
+
 # ============================================================
-# 13. HALLAZGOS DEL ANALISIS
+# 14. HALLAZGOS DEL ANALISIS
 # ============================================================
 
 st.divider()
 st.header("💡 Hallazgos del análisis")
 
 st.caption(
-    "Resultados descriptivos calculados a partir de los datos "
-    "filtrados. No representan diagnósticos médicos."
+    "Resultados descriptivos calculados con los filtros actuales."
 )
 
 conteo_horas = filtrado.groupby("hora").size()
@@ -799,7 +1037,9 @@ if not senal_disponible.empty:
         f"({porcentaje_sin_senal:.2f}% del conjunto filtrado)."
     )
 else:
-    st.write("No hay valores de calidad de señal disponibles.")
+    st.write(
+        "No hay valores de calidad de señal disponibles."
+    )
 
 st.markdown("### 📊 Variabilidad de las mediciones válidas")
 
@@ -837,8 +1077,9 @@ st.write(
     f"({porcentaje_invalidas:.2f}%) están marcados como inválidos."
 )
 
+
 # ============================================================
-# 14. COMPLETITUD Y VALORES ATIPICOS
+# 15. COMPLETITUD Y VALORES ATIPICOS
 # ============================================================
 
 st.divider()
@@ -883,11 +1124,13 @@ st.subheader("Posibles valores atípicos")
 
 if not validas.empty:
     atipicos_bpm = detectar_atipicos(
-        validas, "heart_rate_bpm"
+        validas,
+        "heart_rate_bpm"
     )
 
     atipicos_spo2 = detectar_atipicos(
-        validas, "spo2_percent"
+        validas,
+        "spo2_percent"
     )
 
     a1, a2 = st.columns(2)
@@ -919,6 +1162,7 @@ if not validas.empty:
             )
 
             temporal["variable"] = columna
+
             filas_atipicas.append(temporal)
 
     if filas_atipicas:
@@ -936,21 +1180,23 @@ if not validas.empty:
         st.success(
             "No se detectaron valores atípicos con el criterio IQR."
         )
+
 else:
     st.info(
         "No hay mediciones válidas para detectar valores atípicos."
     )
 
+
 # ============================================================
-# 15. REVISION DE MEDICIONES INVALIDAS
+# 16. REVISION DE MEDICIONES INVALIDAS
 # ============================================================
 
 st.divider()
 st.header("🔎 Revisión de mediciones inválidas")
 
 st.write(
-    "Consulta los registros identificados como inválidos en el "
-    "archivo original. Se conservan para facilitar la auditoría."
+    "Consulta los registros identificados como inválidos "
+    "en el archivo original."
 )
 
 st.metric(
@@ -962,6 +1208,7 @@ if registros_invalidos.empty:
     st.success(
         "No hay mediciones inválidas con los filtros actuales."
     )
+
 else:
     st.warning(
         f"Se encontraron {cantidad_invalidas} mediciones inválidas."
@@ -1001,11 +1248,12 @@ else:
 
     st.caption(
         "La etiqueta invalid proviene del archivo original. "
-        "No se eliminan ni se modifican estos registros."
+        "Los registros no se eliminan ni se modifican."
     )
 
+
 # ============================================================
-# 16. TABLA GENERAL
+# 17. TABLA GENERAL
 # ============================================================
 
 with st.expander("📋 Consultar tabla de registros filtrados"):
@@ -1014,6 +1262,13 @@ with st.expander("📋 Consultar tabla de registros filtrados"):
         use_container_width=True,
         hide_index=True
     )
+
+
+# ============================================================
+# 18. PIE DE PAGINA
+# ============================================================
+
+st.divider()
 
 st.caption(
     "Pulse EAFIT · Proyecto Integrador de Computación Física e IoT"
