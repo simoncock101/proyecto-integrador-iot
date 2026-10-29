@@ -101,9 +101,9 @@ try:
 
 except FileNotFoundError:
     st.error(
-        "No se encontró el archivo CSV. Comprueba que "
-        "esté en la raíz del repositorio y que su nombre "
-        "sea proyecto_integrador_eafit_max30102.csv."
+        "No se encontró el CSV. Comprueba que esté en la raíz "
+        "del repositorio y que su nombre sea "
+        "proyecto_integrador_eafit_max30102.csv."
     )
     st.stop()
 
@@ -111,9 +111,8 @@ except Exception as error:
     st.error(f"No fue posible cargar los datos: {error}")
     st.stop()
 
-
 if df.empty:
-    st.error("El archivo no contiene registros con fechas válidas.")
+    st.error("No hay registros con fechas válidas.")
     st.stop()
 
 
@@ -123,10 +122,8 @@ if df.empty:
 
 st.sidebar.title("🔎 Filtros")
 
-fechas = df["fecha"].dropna()
-
-fecha_min = min(fechas)
-fecha_max = max(fechas)
+fecha_min = min(df["fecha"])
+fecha_max = max(df["fecha"])
 
 rango_fechas = st.sidebar.date_input(
     "Rango de fechas",
@@ -182,7 +179,7 @@ if estado != "Todos":
 if filtrado.empty:
     st.warning(
         "No hay mediciones para los filtros seleccionados. "
-        "Cambia el rango de fechas, estudiante o estado."
+        "Prueba con otro rango de fechas o estudiante."
     )
     st.stop()
 
@@ -190,14 +187,15 @@ validas = filtrado[
     filtrado["measurement_status"] == "valid"
 ].copy()
 
-invalidas = (
+registros_invalidos = filtrado[
     filtrado["measurement_status"] == "invalid"
-).sum()
+].copy()
 
 total = len(filtrado)
+cantidad_invalidas = len(registros_invalidos)
 
 porcentaje_invalidas = (
-    invalidas / total * 100 if total else 0
+    cantidad_invalidas / total * 100 if total else 0
 )
 
 bpm_promedio = validas["heart_rate_bpm"].mean()
@@ -212,10 +210,7 @@ st.subheader("📊 Indicadores generales")
 
 c1, c2, c3, c4, c5 = st.columns(5)
 
-c1.metric(
-    "Mediciones",
-    f"{total:,}"
-)
+c1.metric("Mediciones", f"{total:,}")
 
 c2.metric(
     "Estudiantes",
@@ -243,7 +238,7 @@ st.divider()
 
 
 # ==================================================
-# 6. GRAFICO 1: MEDICIONES POR FECHA
+# 6. GRAFICO: MEDICIONES POR FECHA
 # ==================================================
 
 st.subheader("📅 Actividad del tótem")
@@ -278,7 +273,7 @@ st.plotly_chart(
 
 
 # ==================================================
-# 7. GRAFICOS 2 Y 3: DISTRIBUCIONES
+# 7. DISTRIBUCIONES DE BPM Y SPO2
 # ==================================================
 
 col1, col2 = st.columns(2)
@@ -310,7 +305,6 @@ with col1:
     else:
         st.info("No hay datos válidos de BPM.")
 
-
 with col2:
     st.subheader("🫁 Distribución de SpO₂")
 
@@ -340,7 +334,7 @@ with col2:
 
 
 # ==================================================
-# 8. GRAFICO 4: USO POR HORA
+# 8. USO POR HORA
 # ==================================================
 
 st.subheader("🕒 Horarios de utilización")
@@ -374,7 +368,7 @@ st.plotly_chart(
 
 
 # ==================================================
-# 9. GRAFICO 5: ESTADO DE MEDICIONES
+# 9. ESTADO DE LAS MEDICIONES
 # ==================================================
 
 st.subheader("🛡️ Estado de las mediciones")
@@ -402,7 +396,7 @@ st.plotly_chart(
 
 
 # ==================================================
-# 10. GRAFICO 6: USO POR DIA DE LA SEMANA
+# 10. USO POR DIA DE LA SEMANA
 # ==================================================
 
 st.subheader("📆 Uso por día de la semana")
@@ -474,6 +468,7 @@ if isinstance(rango_fechas, (tuple, list)):
                 rango_fechas[1]
             )
         ]
+
     elif len(rango_fechas) == 1:
         historial = historial[
             historial["fecha"] == rango_fechas[0]
@@ -485,10 +480,7 @@ if not historial.empty:
 
     h1, h2, h3 = st.columns(3)
 
-    h1.metric(
-        "Mediciones válidas",
-        len(historial)
-    )
+    h1.metric("Mediciones válidas", len(historial))
 
     h2.metric(
         "Primera medición",
@@ -551,12 +543,11 @@ st.divider()
 st.header("💡 Hallazgos del análisis")
 
 st.caption(
-    "Resultados descriptivos calculados con los filtros activos. "
-    "Las conclusiones se refieren al uso del dispositivo y "
-    "a las características del conjunto de datos."
+    "Resultados descriptivos calculados a partir de los "
+    "datos filtrados. No representan diagnósticos médicos."
 )
 
-# Hallazgo 1: hora de mayor uso
+# Hallazgo 1: hora de mayor utilización
 
 conteo_horas = filtrado.groupby("hora").size()
 
@@ -583,22 +574,20 @@ conteo_estudiantes = filtrado.groupby("student_id").size()
 
 if not conteo_estudiantes.empty:
     promedio_estudiante = conteo_estudiantes.mean()
-
     max_mediciones = int(conteo_estudiantes.max())
-
     estudiante_mas_activo = conteo_estudiantes.idxmax()
 
     st.markdown("### 👥 2. Frecuencia de utilización")
 
     st.write(
-        f"Se registran **{len(conteo_estudiantes)} estudiantes** "
-        f"en los datos filtrados, con un promedio de "
-        f"**{promedio_estudiante:.2f} mediciones por estudiante**. "
-        f"El identificador con más registros es "
-        f"**{estudiante_mas_activo}**, con {max_mediciones}."
+        f"Se registran **{len(conteo_estudiantes)} estudiantes**, "
+        f"con un promedio de **{promedio_estudiante:.2f} "
+        f"mediciones por estudiante**. El identificador con "
+        f"más registros es **{estudiante_mas_activo}**, "
+        f"con {max_mediciones}."
     )
 
-# Hallazgo 3: calidad de la señal
+# Hallazgo 3: calidad de señal
 
 senal = pd.to_numeric(
     filtrado["signal_quality"],
@@ -611,7 +600,6 @@ st.markdown("### 📶 3. Calidad de la señal")
 
 if not senal_disponible.empty:
     calidad_promedio = senal_disponible.mean()
-
     registros_sin_senal = int(senal.isna().sum())
 
     porcentaje_sin_senal = (
@@ -620,8 +608,8 @@ if not senal_disponible.empty:
 
     st.write(
         f"La calidad de señal promedio es "
-        f"**{calidad_promedio:.3f}** sobre la escala registrada. "
-        f"Hay **{registros_sin_senal} registros** sin este dato "
+        f"**{calidad_promedio:.3f}**. Hay "
+        f"**{registros_sin_senal} registros** sin este dato "
         f"({porcentaje_sin_senal:.2f}% del conjunto filtrado)."
     )
 else:
@@ -653,39 +641,36 @@ if not validas.empty:
     )
 
     st.caption(
-        "La desviación estándar describe la dispersión de los "
-        "valores. Por sí sola no indica un problema de salud."
+        "La desviación estándar describe la dispersión "
+        "de los valores y no determina por sí sola "
+        "un problema de salud."
     )
 else:
     st.info(
         "No hay mediciones válidas para calcular la variabilidad."
     )
 
-# Estado de los registros
-
 st.markdown("### 🛡️ Calidad general de los registros")
 
 st.write(
-    f"**{int(invalidas)} de {total} registros** "
+    f"**{cantidad_invalidas} de {total} registros** "
     f"({porcentaje_invalidas:.2f}%) están marcados como inválidos."
 )
 
 
 # ==================================================
-# 13. CALIDAD DE LOS DATOS Y VALORES ATIPICOS
+# 13. CALIDAD DE LOS DATOS
 # ==================================================
 
 st.divider()
 st.header("🔬 Análisis de calidad de datos")
 
 st.write(
-    "Esta sección revisa la completitud de los registros y "
-    "detecta posibles valores atípicos mediante el rango "
-    "intercuartílico (IQR). Un valor atípico no implica "
-    "necesariamente un error ni una condición médica."
+    "Esta sección revisa la completitud de los registros "
+    "y detecta posibles valores atípicos mediante el rango "
+    "intercuartílico (IQR). Los resultados son estadísticos "
+    "y no constituyen evaluaciones médicas."
 )
-
-# Completitud de variables
 
 columnas_revisar = [
     "timestamp",
@@ -705,8 +690,7 @@ tabla_faltantes = pd.DataFrame({
 })
 
 tabla_faltantes["Porcentaje faltante"] = (
-    tabla_faltantes["Valores faltantes"]
-    / total * 100
+    tabla_faltantes["Valores faltantes"] / total * 100
 ).round(2)
 
 st.subheader("Completitud de los datos")
@@ -717,7 +701,6 @@ st.dataframe(
     hide_index=True
 )
 
-# Función para detectar valores atípicos por IQR
 
 def detectar_atipicos(datos, columna):
     valores = datos[columna].dropna()
@@ -753,15 +736,8 @@ if not validas.empty:
 
     a1, a2 = st.columns(2)
 
-    a1.metric(
-        "Valores atípicos de BPM",
-        len(atipicos_bpm)
-    )
-
-    a2.metric(
-        "Valores atípicos de SpO₂",
-        len(atipicos_spo2)
-    )
+    a1.metric("Valores atípicos de BPM", len(atipicos_bpm))
+    a2.metric("Valores atípicos de SpO₂", len(atipicos_spo2))
 
     filas_atipicas = []
 
@@ -780,7 +756,6 @@ if not validas.empty:
             )
 
             temporal["variable"] = columna
-
             filas_atipicas.append(temporal)
 
     if filas_atipicas:
@@ -796,8 +771,7 @@ if not validas.empty:
         )
     else:
         st.success(
-            "No se detectaron valores atípicos con el criterio "
-            "IQR en las mediciones válidas filtradas."
+            "No se detectaron valores atípicos con el criterio IQR."
         )
 else:
     st.info(
@@ -806,10 +780,76 @@ else:
 
 
 # ==================================================
-# 14. TABLA DE DATOS
+# 14. REVISION DETALLADA DE MEDICIONES INVALIDAS
 # ==================================================
 
-with st.expander("📋 Consultar tabla de registros"):
+st.divider()
+st.header("🔎 Revisión de mediciones inválidas")
+
+st.write(
+    "Consulta los registros identificados como inválidos "
+    "en el archivo original. Se conservan para facilitar "
+    "la auditoría y el análisis de calidad."
+)
+
+st.metric(
+    "Mediciones inválidas con los filtros actuales",
+    cantidad_invalidas
+)
+
+if registros_invalidos.empty:
+    st.success(
+        "No hay mediciones inválidas con los filtros actuales."
+    )
+else:
+    st.warning(
+        f"Se encontraron {cantidad_invalidas} mediciones "
+        "inválidas con los filtros actuales."
+    )
+
+    columnas_invalidas = [
+        "timestamp",
+        "student_id",
+        "device_id",
+        "heart_rate_bpm",
+        "spo2_percent",
+        "signal_quality",
+        "measurement_status"
+    ]
+
+    columnas_disponibles = [
+        columna for columna in columnas_invalidas
+        if columna in registros_invalidos.columns
+    ]
+
+    st.dataframe(
+        registros_invalidos[columnas_disponibles],
+        use_container_width=True,
+        hide_index=True
+    )
+
+    csv_invalidos = registros_invalidos[
+        columnas_disponibles
+    ].to_csv(index=False).encode("utf-8-sig")
+
+    st.download_button(
+        label="📥 Descargar mediciones inválidas",
+        data=csv_invalidos,
+        file_name="mediciones_invalidas_eafit.csv",
+        mime="text/csv"
+    )
+
+    st.caption(
+        "La etiqueta invalid proviene del archivo original. "
+        "No se eliminan ni se modifican estos registros."
+    )
+
+
+# ==================================================
+# 15. TABLA GENERAL DE DATOS
+# ==================================================
+
+with st.expander("📋 Consultar tabla de todos los registros filtrados"):
     st.dataframe(
         filtrado,
         use_container_width=True,
