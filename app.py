@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 
 # ==================================================
-# 1. CONFIGURACION GENERAL
+# 1. CONFIGURACION Y ESTILO VISUAL
 # ==================================================
 
 st.set_page_config(
@@ -12,6 +12,97 @@ st.set_page_config(
     page_icon="💓",
     layout="wide"
 )
+
+st.markdown("""
+<style>
+    .stApp {
+        background-color: #F7F9FC;
+        color: #172B4D;
+    }
+
+    [data-testid="stHeader"] {
+        background-color: rgba(247, 249, 252, 0.95);
+    }
+
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+        border-right: 1px solid #E4EAF2;
+    }
+
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #17365D;
+    }
+
+    h1, h2, h3 {
+        color: #17365D !important;
+        letter-spacing: -0.4px;
+    }
+
+    p, label, .stMarkdown {
+        color: #334155;
+    }
+
+    [data-testid="stMetric"] {
+        background-color: #FFFFFF;
+        border: 1px solid #E3EAF3;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(23, 54, 93, 0.04);
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: #64748B;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #17365D;
+        font-weight: 700;
+    }
+
+    [data-testid="stAlert"] {
+        border-radius: 10px;
+    }
+
+    div[data-testid="stPlotlyChart"] {
+        background-color: #FFFFFF;
+        border: 1px solid #E3EAF3;
+        border-radius: 12px;
+        padding: 8px;
+        margin-bottom: 12px;
+    }
+
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #E3EAF3;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    div.stButton > button,
+    div.stDownloadButton > button {
+        background-color: #087F8C;
+        color: #FFFFFF;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    div.stButton > button:hover,
+    div.stDownloadButton > button:hover {
+        background-color: #066874;
+        color: #FFFFFF;
+    }
+
+    hr {
+        border-color: #E2E8F0;
+    }
+
+    #MainMenu, footer {
+        visibility: hidden;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.title("💓 Pulse EAFIT")
 st.caption(
@@ -98,7 +189,6 @@ def cargar_datos():
 
 try:
     df = cargar_datos()
-
 except FileNotFoundError:
     st.error(
         "No se encontró el CSV. Comprueba que esté en la raíz "
@@ -106,7 +196,6 @@ except FileNotFoundError:
         "proyecto_integrador_eafit_max30102.csv."
     )
     st.stop()
-
 except Exception as error:
     st.error(f"No fue posible cargar los datos: {error}")
     st.stop()
@@ -115,12 +204,12 @@ if df.empty:
     st.error("No hay registros con fechas válidas.")
     st.stop()
 
-
 # ==================================================
 # 3. FILTROS
 # ==================================================
 
 st.sidebar.title("🔎 Filtros")
+st.sidebar.caption("Personaliza los datos que deseas explorar.")
 
 fecha_min = min(df["fecha"])
 fecha_max = max(df["fecha"])
@@ -146,7 +235,6 @@ estado = st.sidebar.selectbox(
     ["Todos", "valid", "invalid"]
 )
 
-
 # ==================================================
 # 4. APLICAR FILTROS
 # ==================================================
@@ -156,11 +244,9 @@ filtrado = df.copy()
 if isinstance(rango_fechas, (tuple, list)):
     if len(rango_fechas) == 2:
         inicio, fin = rango_fechas
-
         filtrado = filtrado[
             filtrado["fecha"].between(inicio, fin)
         ]
-
     elif len(rango_fechas) == 1:
         filtrado = filtrado[
             filtrado["fecha"] == rango_fechas[0]
@@ -201,7 +287,6 @@ porcentaje_invalidas = (
 bpm_promedio = validas["heart_rate_bpm"].mean()
 spo2_promedio = validas["spo2_percent"].mean()
 
-
 # ==================================================
 # 5. INDICADORES GENERALES
 # ==================================================
@@ -211,31 +296,23 @@ st.subheader("📊 Indicadores generales")
 c1, c2, c3, c4, c5 = st.columns(5)
 
 c1.metric("Mediciones", f"{total:,}")
-
 c2.metric(
     "Estudiantes",
     f"{filtrado['student_id'].nunique():,}"
 )
-
 c3.metric(
     "BPM promedio",
     f"{bpm_promedio:.2f}"
     if pd.notna(bpm_promedio) else "—"
 )
-
 c4.metric(
     "SpO₂ promedio",
     f"{spo2_promedio:.2f}%"
     if pd.notna(spo2_promedio) else "—"
 )
-
-c5.metric(
-    "Inválidas",
-    f"{porcentaje_invalidas:.2f}%"
-)
+c5.metric("Inválidas", f"{porcentaje_invalidas:.2f}%")
 
 st.divider()
-
 
 # ==================================================
 # 6. GRAFICO: MEDICIONES POR FECHA
@@ -259,18 +336,17 @@ fig_fecha = px.line(
         "fecha": "Fecha",
         "mediciones": "Número de mediciones"
     },
-    template="plotly_dark"
+    template="plotly_white"
 )
 
 fig_fecha.update_layout(
-    margin=dict(l=20, r=20, t=60, b=20)
+    margin=dict(l=20, r=20, t=60, b=20),
+    paper_bgcolor="white",
+    plot_bgcolor="white",
+    font=dict(color="#334155")
 )
 
-st.plotly_chart(
-    fig_fecha,
-    use_container_width=True
-)
-
+st.plotly_chart(fig_fecha, use_container_width=True)
 
 # ==================================================
 # 7. DISTRIBUCIONES DE BPM Y SPO2
@@ -281,9 +357,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("❤️ Distribución de BPM")
 
-    bpm_data = validas.dropna(
-        subset=["heart_rate_bpm"]
-    )
+    bpm_data = validas.dropna(subset=["heart_rate_bpm"])
 
     if not bpm_data.empty:
         fig_bpm = px.histogram(
@@ -295,22 +369,23 @@ with col1:
                 "heart_rate_bpm": "BPM",
                 "count": "Mediciones"
             },
-            template="plotly_dark"
+            template="plotly_white"
         )
 
-        st.plotly_chart(
-            fig_bpm,
-            use_container_width=True
+        fig_bpm.update_layout(
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            font=dict(color="#334155")
         )
+
+        st.plotly_chart(fig_bpm, use_container_width=True)
     else:
         st.info("No hay datos válidos de BPM.")
 
 with col2:
     st.subheader("🫁 Distribución de SpO₂")
 
-    spo2_data = validas.dropna(
-        subset=["spo2_percent"]
-    )
+    spo2_data = validas.dropna(subset=["spo2_percent"])
 
     if not spo2_data.empty:
         fig_spo2 = px.histogram(
@@ -322,16 +397,18 @@ with col2:
                 "spo2_percent": "SpO₂ (%)",
                 "count": "Mediciones"
             },
-            template="plotly_dark"
+            template="plotly_white"
         )
 
-        st.plotly_chart(
-            fig_spo2,
-            use_container_width=True
+        fig_spo2.update_layout(
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            font=dict(color="#334155")
         )
+
+        st.plotly_chart(fig_spo2, use_container_width=True)
     else:
         st.info("No hay datos válidos de SpO₂.")
-
 
 # ==================================================
 # 8. USO POR HORA
@@ -356,16 +433,17 @@ fig_hora = px.bar(
         "hora": "Hora del día",
         "mediciones": "Número de mediciones"
     },
-    template="plotly_dark"
+    template="plotly_white"
 )
 
 fig_hora.update_xaxes(dtick=1)
-
-st.plotly_chart(
-    fig_hora,
-    use_container_width=True
+fig_hora.update_layout(
+    paper_bgcolor="white",
+    plot_bgcolor="white",
+    font=dict(color="#334155")
 )
 
+st.plotly_chart(fig_hora, use_container_width=True)
 
 # ==================================================
 # 9. ESTADO DE LAS MEDICIONES
@@ -386,14 +464,15 @@ fig_estado = px.pie(
     values="cantidad",
     hole=0.45,
     title="Proporción de mediciones por estado",
-    template="plotly_dark"
+    template="plotly_white"
 )
 
-st.plotly_chart(
-    fig_estado,
-    use_container_width=True
+fig_estado.update_layout(
+    paper_bgcolor="white",
+    font=dict(color="#334155")
 )
 
+st.plotly_chart(fig_estado, use_container_width=True)
 
 # ==================================================
 # 10. USO POR DIA DE LA SEMANA
@@ -402,13 +481,8 @@ st.plotly_chart(
 st.subheader("📆 Uso por día de la semana")
 
 orden_dias = [
-    "Lunes",
-    "Martes",
-    "Miércoles",
-    "Jueves",
-    "Viernes",
-    "Sábado",
-    "Domingo"
+    "Lunes", "Martes", "Miércoles", "Jueves",
+    "Viernes", "Sábado", "Domingo"
 ]
 
 mediciones_dia = (
@@ -428,14 +502,16 @@ fig_dia = px.bar(
         "dia": "Día de la semana",
         "mediciones": "Número de mediciones"
     },
-    template="plotly_dark"
+    template="plotly_white"
 )
 
-st.plotly_chart(
-    fig_dia,
-    use_container_width=True
+fig_dia.update_layout(
+    paper_bgcolor="white",
+    plot_bgcolor="white",
+    font=dict(color="#334155")
 )
 
+st.plotly_chart(fig_dia, use_container_width=True)
 
 # ==================================================
 # 11. SEGUIMIENTO INDIVIDUAL
@@ -459,16 +535,13 @@ historial = df[
     & (df["measurement_status"] == "valid")
 ].sort_values("timestamp")
 
-# Aplicar el rango de fechas al historial individual.
 if isinstance(rango_fechas, (tuple, list)):
     if len(rango_fechas) == 2:
         historial = historial[
             historial["fecha"].between(
-                rango_fechas[0],
-                rango_fechas[1]
+                rango_fechas[0], rango_fechas[1]
             )
         ]
-
     elif len(rango_fechas) == 1:
         historial = historial[
             historial["fecha"] == rango_fechas[0]
@@ -481,16 +554,8 @@ if not historial.empty:
     h1, h2, h3 = st.columns(3)
 
     h1.metric("Mediciones válidas", len(historial))
-
-    h2.metric(
-        "Primera medición",
-        primera.strftime("%d/%m/%Y")
-    )
-
-    h3.metric(
-        "Última medición",
-        ultima.strftime("%d/%m/%Y")
-    )
+    h2.metric("Primera medición", primera.strftime("%d/%m/%Y"))
+    h3.metric("Última medición", ultima.strftime("%d/%m/%Y"))
 
     fig_individual = px.line(
         historial,
@@ -502,13 +567,16 @@ if not historial.empty:
             "timestamp": "Fecha y hora",
             "heart_rate_bpm": "BPM"
         },
-        template="plotly_dark"
+        template="plotly_white"
     )
 
-    st.plotly_chart(
-        fig_individual,
-        use_container_width=True
+    fig_individual.update_layout(
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        font=dict(color="#334155")
     )
+
+    st.plotly_chart(fig_individual, use_container_width=True)
 
     fig_individual_spo2 = px.line(
         historial,
@@ -520,20 +588,24 @@ if not historial.empty:
             "timestamp": "Fecha y hora",
             "spo2_percent": "SpO₂ (%)"
         },
-        template="plotly_dark"
+        template="plotly_white"
+    )
+
+    fig_individual_spo2.update_layout(
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        font=dict(color="#334155")
     )
 
     st.plotly_chart(
         fig_individual_spo2,
         use_container_width=True
     )
-
 else:
     st.info(
         "No hay mediciones válidas para este estudiante "
         "en el período seleccionado."
     )
-
 
 # ==================================================
 # 12. HALLAZGOS DEL ANALISIS
@@ -547,28 +619,19 @@ st.caption(
     "datos filtrados. No representan diagnósticos médicos."
 )
 
-# Hallazgo 1: hora de mayor utilización
-
 conteo_horas = filtrado.groupby("hora").size()
 
 if not conteo_horas.empty:
     hora_pico = int(conteo_horas.idxmax())
     cantidad_pico = int(conteo_horas.max())
-
-    porcentaje_hora = (
-        cantidad_pico / total * 100 if total else 0
-    )
+    porcentaje_hora = cantidad_pico / total * 100
 
     st.markdown("### 🕒 1. Horario de mayor utilización")
-
     st.write(
-        f"La hora con más registros es las "
-        f"**{hora_pico:02d}:00**, con **{cantidad_pico} "
-        f"mediciones**, equivalentes al "
+        f"La hora con más registros es las **{hora_pico:02d}:00**, "
+        f"con **{cantidad_pico} mediciones**, equivalentes al "
         f"**{porcentaje_hora:.2f}%** de las mediciones filtradas."
     )
-
-# Hallazgo 2: frecuencia de uso por estudiante
 
 conteo_estudiantes = filtrado.groupby("student_id").size()
 
@@ -578,16 +641,13 @@ if not conteo_estudiantes.empty:
     estudiante_mas_activo = conteo_estudiantes.idxmax()
 
     st.markdown("### 👥 2. Frecuencia de utilización")
-
     st.write(
         f"Se registran **{len(conteo_estudiantes)} estudiantes**, "
         f"con un promedio de **{promedio_estudiante:.2f} "
-        f"mediciones por estudiante**. El identificador con "
-        f"más registros es **{estudiante_mas_activo}**, "
-        f"con {max_mediciones}."
+        f"mediciones por estudiante**. El identificador con más "
+        f"registros es **{estudiante_mas_activo}**, con "
+        f"{max_mediciones}."
     )
-
-# Hallazgo 3: calidad de señal
 
 senal = pd.to_numeric(
     filtrado["signal_quality"],
@@ -601,24 +661,15 @@ st.markdown("### 📶 3. Calidad de la señal")
 if not senal_disponible.empty:
     calidad_promedio = senal_disponible.mean()
     registros_sin_senal = int(senal.isna().sum())
-
-    porcentaje_sin_senal = (
-        registros_sin_senal / total * 100 if total else 0
-    )
+    porcentaje_sin_senal = registros_sin_senal / total * 100
 
     st.write(
-        f"La calidad de señal promedio es "
-        f"**{calidad_promedio:.3f}**. Hay "
-        f"**{registros_sin_senal} registros** sin este dato "
+        f"La calidad de señal promedio es **{calidad_promedio:.3f}**. "
+        f"Hay **{registros_sin_senal} registros** sin este dato "
         f"({porcentaje_sin_senal:.2f}% del conjunto filtrado)."
     )
 else:
-    st.write(
-        "No hay valores de calidad de señal disponibles "
-        "para los filtros seleccionados."
-    )
-
-# Variabilidad de las mediciones
+    st.write("No hay valores de calidad de señal disponibles.")
 
 st.markdown("### 📊 Variabilidad de las mediciones válidas")
 
@@ -642,13 +693,10 @@ if not validas.empty:
 
     st.caption(
         "La desviación estándar describe la dispersión "
-        "de los valores y no determina por sí sola "
-        "un problema de salud."
+        "de los valores, no determina por sí sola un problema de salud."
     )
 else:
-    st.info(
-        "No hay mediciones válidas para calcular la variabilidad."
-    )
+    st.info("No hay mediciones válidas para calcular la variabilidad.")
 
 st.markdown("### 🛡️ Calidad general de los registros")
 
@@ -657,19 +705,18 @@ st.write(
     f"({porcentaje_invalidas:.2f}%) están marcados como inválidos."
 )
 
-
 # ==================================================
-# 13. CALIDAD DE LOS DATOS
+# 13. CALIDAD DE LOS DATOS Y VALORES ATIPICOS
 # ==================================================
 
 st.divider()
 st.header("🔬 Análisis de calidad de datos")
 
 st.write(
-    "Esta sección revisa la completitud de los registros "
-    "y detecta posibles valores atípicos mediante el rango "
-    "intercuartílico (IQR). Los resultados son estadísticos "
-    "y no constituyen evaluaciones médicas."
+    "Se revisa la completitud y se detectan posibles valores "
+    "atípicos mediante el rango intercuartílico (IQR). "
+    "Un valor atípico no implica necesariamente un error "
+    "ni una condición médica."
 )
 
 columnas_revisar = [
@@ -724,15 +771,8 @@ def detectar_atipicos(datos, columna):
 st.subheader("Posibles valores atípicos")
 
 if not validas.empty:
-    atipicos_bpm = detectar_atipicos(
-        validas,
-        "heart_rate_bpm"
-    )
-
-    atipicos_spo2 = detectar_atipicos(
-        validas,
-        "spo2_percent"
-    )
+    atipicos_bpm = detectar_atipicos(validas, "heart_rate_bpm")
+    atipicos_spo2 = detectar_atipicos(validas, "spo2_percent")
 
     a1, a2 = st.columns(2)
 
@@ -751,10 +791,7 @@ if not validas.empty:
                 ["timestamp", "student_id", columna]
             ].copy()
 
-            temporal = temporal.rename(
-                columns={columna: "valor"}
-            )
-
+            temporal = temporal.rename(columns={columna: "valor"})
             temporal["variable"] = columna
             filas_atipicas.append(temporal)
 
@@ -774,22 +811,18 @@ if not validas.empty:
             "No se detectaron valores atípicos con el criterio IQR."
         )
 else:
-    st.info(
-        "No hay mediciones válidas para detectar valores atípicos."
-    )
-
+    st.info("No hay mediciones válidas para detectar valores atípicos.")
 
 # ==================================================
-# 14. REVISION DETALLADA DE MEDICIONES INVALIDAS
+# 14. REVISION DE MEDICIONES INVALIDAS
 # ==================================================
 
 st.divider()
 st.header("🔎 Revisión de mediciones inválidas")
 
 st.write(
-    "Consulta los registros identificados como inválidos "
-    "en el archivo original. Se conservan para facilitar "
-    "la auditoría y el análisis de calidad."
+    "Consulta los registros identificados como inválidos en el "
+    "archivo original. Se conservan para facilitar la auditoría."
 )
 
 st.metric(
@@ -803,8 +836,7 @@ if registros_invalidos.empty:
     )
 else:
     st.warning(
-        f"Se encontraron {cantidad_invalidas} mediciones "
-        "inválidas con los filtros actuales."
+        f"Se encontraron {cantidad_invalidas} mediciones inválidas."
     )
 
     columnas_invalidas = [
@@ -844,12 +876,11 @@ else:
         "No se eliminan ni se modifican estos registros."
     )
 
-
 # ==================================================
-# 15. TABLA GENERAL DE DATOS
+# 15. TABLA GENERAL
 # ==================================================
 
-with st.expander("📋 Consultar tabla de todos los registros filtrados"):
+with st.expander("📋 Consultar tabla de registros filtrados"):
     st.dataframe(
         filtrado,
         use_container_width=True,
@@ -859,4 +890,5 @@ with st.expander("📋 Consultar tabla de todos los registros filtrados"):
 st.caption(
     "Pulse EAFIT · Proyecto Integrador de Computación Física e IoT"
 )
+
 
